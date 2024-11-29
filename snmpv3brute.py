@@ -21,6 +21,7 @@ import hashlib, pyshark, argparse, time, sys
 from multiprocessing import Pool
 from itertools import repeat
 from binascii import unhexlify
+from tqdm import tqdm
 
 class color:
    ### Used for formatting output text
@@ -174,6 +175,13 @@ def printBanner():
    print("                     |_|           for "+color.BOLD+color.RED+"Applied Risk"+color.END+"            ")
    print("                                                               ")
 
+def print_results_header(lenID,lenIP,lenUN):
+   # Print results header
+   print(color.BOLD+"\nResults:"+color.END)
+   print(" ID {} IP address {} Username {} Alg   Password".format(" "*(1+int(lenID)-2)," "*(1+(int(lenIP))-10)," "*(1+(int(lenUN))-8)))
+   print("{} {} {} {} {}".format("-"*(int(lenID)+2),"-"*(int(lenIP)+2),"-"*(int(lenUN)+2),"-"*5,"-"*10))
+   
+
 def main():
    ### GREETZ
    printBanner()
@@ -236,11 +244,7 @@ def main():
       print(" {} {} {} {} {}".format(str(t[6]).zfill(2)," "*(int(lenID)-len(str(t[6]).zfill(2))+1),t[0]," "*(int(lenIP)-len(t[0])+1),t[2]))
 
    ### Process tasklist items and print results
-   # Print results header
-   print(color.BOLD+"\nResults:"+color.END)
-   print(" ID {} IP address {} Username {} Alg   Password".format(" "*(1+int(lenID)-2)," "*(1+(int(lenIP))-10)," "*(1+(int(lenUN))-8)))
-   print("{} {} {} {} {}".format("-"*(int(lenID)+2),"-"*(int(lenIP)+2),"-"*(int(lenUN)+2),"-"*5,"-"*10))
-
+   
    # Process tasks and print results
    for t in taskList:
       keepTrying = True
@@ -255,40 +259,52 @@ def main():
       startTime = time.time()
       
       print(" {} {} {} {} {} {} ".format(str(t[6]).zfill(2)," "*(int(lenID)-len(str(t[6]).zfill(2))+1),t[0]," "*(int(lenIP)-len(t[0])+1),t[2]," "*(int(lenUN)-len(t[2])+1)), end='') 
-      print((color.YELLOW+"{}   Trying..."+color.END).format(hashType.upper()), end='\r')
+      print((color.YELLOW+"{}   Trying..."+color.END).format(hashType.upper()), end='\n\n')
             
       # Check single words first (either supplied with -W or added by multi-task processing)
       if (len(singleWord) > 0) and keepTrying:
-         for w in singleWord:
-            passwordFound = check_password(w)
-            if passwordFound:
-               keepTrying = False
-               endTime = time.time()
-               # Print current task findings
-               print(" {} {} {} {} {} {} ".format(str(t[6]).zfill(2)," "*(int(lenID)-len(str(t[6]).zfill(2))+1),t[0]," "*(int(lenIP)-len(t[0])+1),t[2]," "*(int(lenUN)-len(t[2])+1)), end='') 
-               print((color.GREEN+"{}   {}"+color.END+" ({:.2f}s)").format(passwordFound[1],str(passwordFound[0]),endTime-startTime)) 
+         for w in tqdm(singleWord, total=len(singleWord), desc="Processing single words"):
+            singleWordPasswordFound = check_password(w)
+            if singleWordPasswordFound:
                break
+            
+      # Init both password found variables to None
+      singleWordPasswordFound = None
+      wordlistPasswordFound = None
       
       # Check words in wordlist, if supplied   
-        
       if args.wordlist and keepTrying:
          # Create and use multithreading pool for faster wordlist processing
          pool = Pool()
          with open(args.wordlist, "r", encoding='latin-1') as lines:
+            # Wrap lines with tqdm for a progress bar
+            total_lines = sum(1 for _ in open(args.wordlist, "r", encoding='latin-1'))  # Get total number of lines for tqdm
+            lines.seek(0)  # Reset file pointer after counting lines
+        
             results = pool.imap_unordered(check_password, lines, chunksize=1000)
             pool.close()
-            for passwordFound in results:
-               if passwordFound:
-                  singleWord.append(passwordFound[0])
-                  keepTrying = False
-                  endTime = time.time()
-                  pool.terminate()
-                  # Print current task findings
-                  print(" {} {} {} {} {} {} ".format(str(t[6]).zfill(2)," "*(int(lenID)-len(str(t[6]).zfill(2))+1),t[0]," "*(int(lenIP)-len(t[0])+1),t[2]," "*(int(lenUN)-len(t[2])+1)), end='') 
-                  print((color.GREEN+"{}   {}"+color.END+" ({:.2f}s)").format(passwordFound[1],str(passwordFound[0]),endTime-startTime)) 
+            for wordlistPasswordFound in tqdm(results, total=total_lines, desc="Processing passwords"):
+               if wordlistPasswordFound:
                   break
-
-      if not passwordFound:
+               
+      # Print results header then print results
+      print_results_header(lenID, lenIP, lenUN)
+      if singleWordPasswordFound:
+         keepTrying = False
+         endTime = time.time()
+         # Print current task findings
+         print(" {} {} {} {} {} {} ".format(str(t[6]).zfill(2)," "*(int(lenID)-len(str(t[6]).zfill(2))+1),t[0]," "*(int(lenIP)-len(t[0])+1),t[2]," "*(int(lenUN)-len(t[2])+1)), end='') 
+         print((color.GREEN+"{}   {}"+color.END+" ({:.2f}s)").format(singleWordPasswordFound[1],str(singleWordPasswordFound[0]),endTime-startTime)) 
+      
+      elif wordlistPasswordFound :
+         singleWord.append(wordlistPasswordFound[0])
+         keepTrying = False
+         endTime = time.time()
+         pool.terminate()
+         # Print current task findings
+         tqdm.write(" {} {} {} {} {} {} ".format(str(t[6]).zfill(2)," "*(int(lenID)-len(str(t[6]).zfill(2))+1),t[0]," "*(int(lenIP)-len(t[0])+1),t[2]," "*(int(lenUN)-len(t[2])+1)), end='') 
+         tqdm.write((color.GREEN+"{}   {}"+color.END+" ({:.2f}s)").format(wordlistPasswordFound[1],str(wordlistPasswordFound[0]),endTime-startTime)) 
+      else :
          # Print current task not found
          endTime = time.time()
          print(" {} {} {} {} {} {} ".format(str(t[6]).zfill(2)," "*(int(lenID)-len(str(t[6]).zfill(2))+1),t[0]," "*(int(lenIP)-len(t[0])+1),t[2]," "*(int(lenUN)-len(t[2])+1)), end='') 

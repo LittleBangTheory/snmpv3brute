@@ -9,6 +9,20 @@ A single SNMPv3 packet contains all of the information needed to calculate and b
 
 This bruteforcer takes inspiration from other projects out there; but the goal of this script is to perform all calculations natively in python, stripping out all unnecessary functionality to maximize speed. 
 
+## Installation
+
+Install the necessary Python libraries :
+
+```bash
+$ pip install pyshark tqdm
+```
+
+Install the `tshark` package for pyshark to work:
+
+```bash
+sudo apt install tshark
+```
+
 ## Usage:
 
 ```wrap
