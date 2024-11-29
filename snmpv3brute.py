@@ -174,13 +174,7 @@ def printBanner():
    print("                     | |        by "+color.BOLD+color.BLUE+"Scott Thomas"+color.END+"                ")
    print("                     |_|           for "+color.BOLD+color.RED+"Applied Risk"+color.END+"            ")
    print("                                                               ")
-
-def print_results_header(lenID,lenIP,lenUN):
-   # Print results header
-   print(color.BOLD+"\nResults:"+color.END)
-   print(" ID {} IP address {} Username {} Alg   Password".format(" "*(1+int(lenID)-2)," "*(1+(int(lenIP))-10)," "*(1+(int(lenUN))-8)))
-   print("{} {} {} {} {}".format("-"*(int(lenID)+2),"-"*(int(lenIP)+2),"-"*(int(lenUN)+2),"-"*5,"-"*10))
-   
+ 
 
 def main():
    ### GREETZ
@@ -287,8 +281,12 @@ def main():
                if wordlistPasswordFound:
                   break
                
-      # Print results header then print results
-      print_results_header(lenID, lenIP, lenUN)
+      # Print results header
+      print(color.BOLD+"\nResults:"+color.END)
+      print(" ID {} IP address {} Username {} Alg   Password".format(" "*(1+int(lenID)-2)," "*(1+(int(lenIP))-10)," "*(1+(int(lenUN))-8)))
+      print("{} {} {} {} {}".format("-"*(int(lenID)+2),"-"*(int(lenIP)+2),"-"*(int(lenUN)+2),"-"*5,"-"*10))
+      
+      # Print results
       if singleWordPasswordFound:
          keepTrying = False
          endTime = time.time()
